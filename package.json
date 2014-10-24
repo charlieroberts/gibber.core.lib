@@ -1,0 +1,21 @@
+{
+  "name": "gibber.core.lib",
+  "version": "0.0.0",
+  "description": "small set of core objects and functions for gibber",
+  "main": "scripts/gibber.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/charlieroberts/gibber.core.lib.git"
+  },
+  "keywords": [
+    "gibber"
+  ],
+  "author": "Charlie Roberts <charlie@charlie-roberts.com> (http://www.charlie-roberts.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/charlieroberts/gibber.core.lib/issues"
+  }
+}
