@@ -1,13 +1,13 @@
-!function() {
+module.exports = function( Gibber ) {
+
 "use strict"
 
 var soloGroup = [],
     isSoloing = false,
-    Gibber,
-    $ = require( './dollar' ),
+    $ = Gibber.dollar,
     Synths = { Presets: {} },
-    Gibberish = require( 'gibberish-dsp' ),
-    Clock = require('./clock')( Gibber ),
+    Gibberish = Gibber.Audio ? Gibber.Audio.Core : null ,//require( 'gibberish-dsp' ),
+    Clock = Gibber.Clock,
     rnd = Math.random,
 
     Utilities = {
@@ -405,7 +405,6 @@ var soloGroup = [],
         Array.prototype.merge = Utilities.merge
       }  
     }
-
-  module.exports = function( __Gibber ) { if( typeof Gibber === 'undefined' ) { Gibber = __Gibber; } return Utilities }
-
-}()
+  
+  return Utilities
+}

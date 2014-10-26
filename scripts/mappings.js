@@ -1,11 +1,11 @@
-module.exports = function( Gibber, Gibberish ) {  
+module.exports = function( Gibber ) {  
   var mappings = {
     audio : {
       graphics: function( target, from ) {
 				if( typeof from.object.track === 'undefined' ) from.object.track = {}
 				
-        var proxy = typeof from.object.track[ from.propertyName ] !== 'undefined' ? from.object.track[ from.propertyName ] : new Gibberish.Proxy2( from.object, from.propertyName ),
-            op    = new Gibberish.OnePole({ a0:.005, b1:.995 }),
+        var proxy = typeof from.object.track[ from.propertyName ] !== 'undefined' ? from.object.track[ from.propertyName ] : new Gibber.Audio.Core.Proxy2( from.object, from.propertyName ),
+            op    = new Gibber.Audio.Core.OnePole({ a0:.005, b1:.995 }),
             mapping
         
         from.object.track = proxy;
@@ -31,8 +31,8 @@ module.exports = function( Gibber, Gibberish ) {
       },
       interface: function( target, from ) {
         // TODO: why does the proxy track from.name instead of from.propertyName? maybe because interface elements don't get passed to mapping init?
-        var proxy = typeof from.track !== 'undefined' ? from.track : new Gibberish.Proxy2( from.object, from.name ),
-            op    = new Gibberish.OnePole({ a0:.005, b1:.995 }),
+        var proxy = typeof from.track !== 'undefined' ? from.track : new Gibber.Audio.Core.Proxy2( from.object, from.name ),
+            op    = new Gibber.Audio.Core.OnePole({ a0:.005, b1:.995 }),
             range = target.max - target.min,
             percent = ( target.object[ target.propertyName ] - target.min ) / range,
             widgetValue = from.min + ( ( from.max - from.min ) * percent ),
@@ -82,7 +82,7 @@ module.exports = function( Gibber, Gibberish ) {
           proxy = from.object.track
           proxy.count++
         } else {
-          proxy = new Gibberish.Proxy2( from.object, from.propertyName )
+          proxy = new Gibber.Audio.Core.Proxy2( from.object, from.propertyName )
           proxy.count = 1
         }
         from.object.track = proxy
@@ -102,7 +102,7 @@ module.exports = function( Gibber, Gibberish ) {
         }
         
         mapping.replace = function( replacementObject, key, Key ) {
-          var proxy = new Gibberish.Proxy2( replacementObject, key )
+          var proxy = new Gibber.Audio.Core.Proxy2( replacementObject, key )
           mapping.input = proxy
           if( replacementObject[ Key ].targets && replacementObject[ Key ].targets.indexOf( target ) === -1 ) {
             replacementObject[ Key ].targets.push( [target, target.Name] )
@@ -260,13 +260,13 @@ module.exports = function( Gibber, Gibberish ) {
         
         mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, from.min, from.max, target.output, from.wrap )
       
-        mapping.follow = typeof from.object.track !== 'undefined' ? from.object.track : new Gibberish.Follow({ input:from.object[ from.propertyName ], useAbsoluteValue: false })
+        mapping.follow = typeof from.object.track !== 'undefined' ? from.object.track : new Gibber.Audio.Core.Follow({ input:from.object[ from.propertyName ], useAbsoluteValue: false })
         
         from.object.track = target.object[ target.Name ].mapping.follow
         // assign input after Map ugen is created so that follow can be assigned to the mapping object
         mapping.input = mapping.follow
       
-        mapping.bus = new Gibberish.Bus2({ amp:0 }).connect()
+        mapping.bus = new Gibber.Audio.Core.Bus2({ amp:0 }).connect()
 
         mapping.connect( mapping.bus )
         
@@ -317,7 +317,7 @@ module.exports = function( Gibber, Gibberish ) {
             mapping.follow = from.object.track
             mapping.follow.count++
           } else {
-            mapping.follow = new Gibberish.Follow({ input:from.object })
+            mapping.follow = new Gibber.Audio.Core.Follow({ input:from.object })
             mapping.follow.count = 1
           }
           from.object.track = mapping.follow
@@ -330,7 +330,7 @@ module.exports = function( Gibber, Gibberish ) {
           })
           
           mapping.input = mapping.follow
-          mapping.bus = new Gibberish.Bus2({ amp:0 }).connect()
+          mapping.bus = new Gibber.Audio.Core.Bus2({ amp:0 }).connect()
           mapping.connect( mapping.bus )
         
           mapping.replace = function( replacementObject, key, Key  ) {
@@ -512,7 +512,7 @@ module.exports = function( Gibber, Gibberish ) {
           mapping.follow = from.object.track
           mapping.follow.count++
         }else{
-          mapping.follow = new Gibberish.Follow({ input:from.object.properties[ from.propertyName ], useAbsoluteValue: false })
+          mapping.follow = new Gibber.Audio.Core.Follow({ input:from.object.properties[ from.propertyName ], useAbsoluteValue: false })
           mapping.follow.count = 1
         }
         
@@ -521,7 +521,7 @@ module.exports = function( Gibber, Gibberish ) {
         // assign input after Map ugen is created so that follow can be assigned to the mapping object
         mapping.input = mapping.follow
       
-        mapping.bus = new Gibberish.Bus2({ amp:0 }).connect()
+        mapping.bus = new Gibber.Audio.Core.Bus2({ amp:0 }).connect()
 
         mapping.connect( mapping.bus )
         
@@ -572,7 +572,7 @@ module.exports = function( Gibber, Gibberish ) {
             mapping.follow = from.object.track
             mapping.follow.count++
           }else{
-            mapping.follow = new Gibberish.Follow({ input:from.object, useAbsoluteValue: true })
+            mapping.follow = new Gibber.Audio.Core.Follow({ input:from.object, useAbsoluteValue: true })
             mapping.follow.count = 1
           }
           
@@ -586,7 +586,7 @@ module.exports = function( Gibber, Gibberish ) {
           })
           
           mapping.input = mapping.follow
-          mapping.bus = new Gibberish.Bus2({ amp:0 }).connect()
+          mapping.bus = new Gibber.Audio.Core.Bus2({ amp:0 }).connect()
           mapping.connect( mapping.bus )
         
           mapping.replace = function( replacementObject, key, Key  ) {
