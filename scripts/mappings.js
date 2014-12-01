@@ -31,13 +31,14 @@ module.exports = function( Gibber ) {
       },
       interface: function( target, from ) {
         // TODO: why does the proxy track from.name instead of from.propertyName? maybe because interface elements don't get passed to mapping init?
-        var proxy = typeof from.track !== 'undefined' ? from.track : new Gibber.Audio.Core.Proxy2( from.object, from.name ),
+        // console.log( "Making mapping : ", from.object, from, from.propertyName, target.propertyName )
+        var proxy = typeof from.track !== 'undefined' ? from.track : new Gibber.Audio.Core.Proxy2( from.object, from.propertyName ),
             op    = new Gibber.Audio.Core.OnePole({ a0:.005, b1:.995 }),
             range = target.max - target.min,
             percent = ( target.object[ target.propertyName ] - target.min ) / range,
             widgetValue = from.min + ( ( from.max - from.min ) * percent ),
             mapping
-                
+        
         if( from.object.setValue ) from.object.setValue( widgetValue )
         
         from.track = proxy
@@ -199,8 +200,7 @@ module.exports = function( Gibber ) {
         return mapping
       },
       interface: function( target, from ) {
-        // console.log( "FROM", from.propertyName, target.min, target.max, from.min, from.max )
-        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
+        var _map = Gibber.Audio.Core.Binops.Map( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap ),
             mapping
             
         if( typeof from.object.functions === 'undefined' ) {
@@ -219,7 +219,7 @@ module.exports = function( Gibber ) {
         var fcn_name = target.propertyName + ' <- ' + from.object.propertyName + '.' + from.Name
 
         from.object.functions[ fcn_name ] = function() {
-          var val = mapping.callback( from.object[ from.name ], target.min, target.max, from.min, from.max, target.output, from.wrap )
+          var val = mapping.callback( from.object[ from.propertyName ], target.min, target.max, from.min, from.max, target.output, from.wrap )
           // target.object[ target.Name ].value = val
           // console.log( target.Name )
           target.object[ target.Name ].oldSetter.call( target.object[ target.Name ], val )
@@ -353,7 +353,6 @@ module.exports = function( Gibber ) {
             
           }
         }else{
-          console.log("REPLACING MAPPING")
           mapping.replace( from.object, from.propertyName, from.Name )
           return mapping
         }
@@ -391,7 +390,6 @@ module.exports = function( Gibber ) {
           }else if( target.modObject ) {
             target.modObject.removeMod( target.modName )
           }else{
-            console.log( 'removing update ')
             //target.object.update = function() {}
           }
           
@@ -565,8 +563,6 @@ module.exports = function( Gibber ) {
       audioOut : function( target, from ) {
         if( typeof target.object[ target.Name ].mapping === 'undefined') {
           var mapping = target.object[ target.Name ].mapping = Gibber.Audio.Core.Binops.Map( null, target.min, target.max, 0, 1, 0 )
-          
-          console.log( "MAPPING", from )
           
           if( typeof from.object.track !== 'undefined' && from.object.track.input === from.object.properties[ from.propertyName ] ) {
             mapping.follow = from.object.track

@@ -7,8 +7,6 @@ var $ = require( './dollar' )
 var Gibber = {
   dollar: $,
   Presets: {},
-  GraphicsLib: {},
-  Binops: {},
   scale : null,
   minNoteFrequency:50,
   started:false,
@@ -16,6 +14,7 @@ var Gibber = {
     LINEAR:0,
     LOGARITHMIC:1
   },
+  Pattern: require( './pattern' ),
   
   export: function( target ) {
     Gibber.Utilities.export( target )
@@ -86,7 +85,7 @@ var Gibber = {
   //   }
   // },
   Modules : {},
- 	import : function( path, exportTo ) {
+ 	import : function( path, exportTo, shouldSave ) {
     var _done = null;
     console.log( 'Loading module ' + path + '...' )
 
@@ -315,13 +314,12 @@ var Gibber = {
         _min = typeof from.min === 'function' ? from.min() : from.min,
         _max = typeof from.max === 'function' ? from.max() : from.max
     
-    // console.log( "MAPPING", from, target )
     if( typeof from.object === 'undefined' && from.Value) { // if using an interface object directly to map
       from = from.Value
     }
     
     if( typeof target.object[ target.Name ].mapping !== 'undefined') {
-      target.object[ target.Name ].mapping.replace( from.object, from.name, from.Name )
+      target.object[ target.Name ].mapping.replace( from.object, from.propertyName, from.Name )
       return
     }
     
@@ -330,9 +328,7 @@ var Gibber = {
     }
     
     var fromTimescale = from.Name !== 'Out' ? from.timescale : 'audioOut' // check for audio Out, which is a faux property
-    
-    //console.log( target.timescale, fromTimescale )
-    
+        
     mapping = Gibber.mappings[ target.timescale ][ fromTimescale ]( target, from )
     
     //target.object[ target.name ].toString = function() { return '> continuous mapping: ' + from.name + ' -> ' + target.name }
@@ -364,7 +360,7 @@ var Gibber = {
       dimensions:1
     })
     
-    Object.defineProperties( from.object[ from.Name ], {
+    Object.defineProperties( from.object[    from.Name ], {
       'min' : {
         configurable:true,
         get : function() { return _min },
@@ -390,32 +386,24 @@ var Gibber = {
     from.object.mappings.push( mapping )
     
     Gibber.defineSequencedProperty( target.object[ target.Name ], 'invert' )
-    
+        
     return mapping
   },
   
   defineSequencedProperty : function( obj, key, priority ) {
     var fnc = obj[ key ], seq, seqNumber
-    
-    // for( var i = obj.seq.seqs.length - 1; i >= 0; i-- ) {
-    //   var s = obj.seq.seqs[ i ]
-    //   if( s.key === key ) {
-    //     seq = s,
-    //     seqNumber = i
-    //     break;
-    //   }
-    // }
-    
+
     if( !obj.seq && Gibber.Audio ) {
       obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority, target:obj })
     }
     
-    fnc.seq = function( v,d ) {  
-
+    fnc.seq = function( _v,_d ) {  
+      var v = $.isArray(_v) ? _v : [_v]
+      var d = $.isArray(_d) ? _d : typeof _d !== 'undefined' ? [_d] : null
       var args = {
             'key': key,
-            values: $.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
-            durations: $.isArray(d) ? d : typeof d !== 'undefined' ? [d] : null,
+            values: [ Gibber.construct( Gibber.Pattern, v ) ],//$.isArray(v) || v !== null && typeof v !== 'function' && typeof v.length === 'number' ? v : [v],
+            durations: d !== null ? [ Gibber.construct( Gibber.Pattern, d ) ] : null,
             target: obj,
             'priority': priority
           }
@@ -425,43 +413,56 @@ var Gibber = {
         obj.seq.seqs.splice( seqNumber, 1 )
       }
       
+      var valuesPattern = args.values[0]
+      if( v.randomFlag ) {
+        valuesPattern.filters.push( function() { return [ valuesPattern.values[ rndi(0, valuesPattern.values.length - 1) ], 1 ] } )
+        for( var i = 0; i < v.randomArgs.length; i+=2 ) {
+          valuesPattern.repeat( v.randomArgs[ i ], v.randomArgs[ i + 1 ] )
+        }
+      }
+      
+      if( d !== null ) {
+        var durationsPattern = args.durations[0]
+        if( d.randomFlag ) {
+          durationsPattern.filters.push( function() { return [ durationsPattern.values[ rndi(0, durationsPattern.values.length - 1) ], 1 ] } )
+          for( var i = 0; i < d.randomArgs.length; i+=2 ) {
+            durationsPattern.repeat( d.randomArgs[ i ], d.randomArgs[ i + 1 ] )
+          }
+        }
+      }
       obj.seq.add( args )
       
       seqNumber = obj.seq.seqs.length - 1
       seq = obj.seq.seqs[ seqNumber ]
       
-      if( args.durations === null ) { obj.seq.autofire.push( seq ) }
-      
-      Object.defineProperties( fnc.seq, {
+      Object.defineProperties( fnc, {
         values: {
           configurable:true,
-          get: function() { return obj.seq.seqs[ seqNumber ].values },
-          set: function(v) {
-            if( !Array.isArray(v) ) {
-              v = [ v ]
+          get: function() { return obj.seq.seqs[ seqNumber ].values[ 0 ] },
+          set: function( val ) {
+            var pattern = Gibber.construct( Gibber.Pattern, val )
+            
+            if( !Array.isArray( pattern ) ) {
+              pattern = [ pattern ]
             }
-            if( key === 'note' && obj.seq.scale ) {  
-              v = makeNoteFunction( v, obj.seq )
-            }
-            obj.seq.seqs[ seqNumber ].values = v //.splice( 0, 10000, v )
-            //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].values, 'reverse' )
+            // if( key === 'note' && obj.seq.scale ) {  
+            //   v = makeNoteFunction( v, obj.seq )
+            // }
+            //console.log("NEW VALUES", v )
+            obj.seq.seqs[ seqNumber ].values = pattern
           }
         },
         durations: {
           configurable:true,
-          get: function() { return obj.seq.seqs[ seqNumber ].durations },
-          set: function(v) {
-            if( !Array.isArray(v) ) {
-              v = [ v ]
+          get: function() { return obj.seq.seqs[ seqNumber ].durations[ 0 ] },
+          set: function( val ) {
+            if( !Array.isArray( val ) ) {
+              val = [ val ]
             }
-            obj.seq.seqs[ seqNumber ].durations = v   //.splice( 0, 10000, v )
-            //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].durations, 'reverse' )  
+            obj.seq.seqs[ seqNumber ].durations = val   //.splice( 0, 10000, v )
           }
         },
-      })
-      
-      //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].values, 'reverse' )
-      //Gibber.defineSequencedProperty( obj.seq.seqs[ seqNumber ].durations, 'reverse' )      
+      })     
       
       if( !obj.seq.isRunning ) {
         obj.seq.offset = Gibber.Clock.time( obj.offset )
@@ -515,8 +516,8 @@ var Gibber = {
     }
   },
   
-  createProxyMethods : function( obj, methods ) {
-    for( var i = 0; i < methods.length; i++ ) Gibber.defineSequencedProperty( obj, methods[ i ] ) 
+  createProxyMethods : function( obj, methods, priority ) {
+    for( var i = 0; i < methods.length; i++ ) Gibber.defineSequencedProperty( obj, methods[ i ], priority ) 
   },
   
   defineProperty : function( obj, propertyName, shouldSeq, shouldRamp, mappingsDictionary, shouldUseMappings, priority, useOldGetter ) {
@@ -525,7 +526,7 @@ var Gibber = {
         property = function( v ) {
           var returnValue = property
           
-          if( v ) { 
+          if( typeof v !== 'undefined' ) { 
             obj[ propertyName ] = v
             returnValue = obj
           }
@@ -546,7 +547,15 @@ var Gibber = {
       object:   obj,
       targets:  [],
       valueOf:  function() { return property.value },
-      toString: function() { return property.value.toString() },
+      toString: function() { 
+        var output = ""
+        if( typeof property.value === 'object' ) {
+          output = property.value.toString()
+        }else{
+          output = property.value
+        }
+        return output
+      },
       oldSetter: obj.__lookupSetter__( propertyName ),
       oldGetter: obj.__lookupGetter__( propertyName ),      
       oldMappingObjectGetter: obj.__lookupGetter__( Name ),
@@ -569,7 +578,6 @@ var Gibber = {
       },
       set: function( v ){
         if( (typeof v === 'function' || typeof v === 'object' && v.type === 'mapping') && ( v.type === 'property' || v.type === 'mapping' ) ) {
-          //console.log( "CREATING MAPPING", property )
           Gibber.createMappingObject( property, v )
         }else{
           if( shouldUseMappings && obj[ property.Name ] ) {
@@ -626,7 +634,7 @@ var Gibber = {
     
     obj.mappingProperties = mappingProperties
     obj.mappingObjects = []
-    
+        
     for( var key in mappingProperties ) {
       if( ! mappingProperties[ key ].doNotProxy ) {
         Gibber.createProxyProperty( obj, key, shouldSeq, shouldRamp, mappingProperties[ key ] )

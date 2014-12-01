@@ -39,38 +39,37 @@ var soloGroup = [],
         return output
       },
       random :  function() {
-        var dict = {},
-            lastChosen = null;
+        this.randomFlag = true
+        this.randomArgs = Array.prototype.slice.call( arguments, 0 )
+        // var dict = {},
+        //     lastChosen = null;
+        //     
+        // for(var i = 0; i < arguments.length; i+=2) {
+        //   dict[ "" + arguments[i] ] = { repeat: arguments[i+1], count: 0 };
+        // }
+        // 
+        // this.pick = function() {
+        //   var value = 0, index, lastValue;
+        //   if(this[lastChosen]) lastValue = this[lastChosen]
+        // 
+        //   if(lastChosen !== null && dict[ lastValue ].count++ <= dict[ lastValue ].repeat) {
+        //     index = lastChosen;
+        //     if( dict[ lastValue ].count >= dict[ lastValue ].repeat) {
+        //       dict[ lastValue ].count = 0;
+        //       lastChosen = null;
+        //     };
+        //   }else{
+        //     index = Utilities.rndi(0, this.length - 1);
+        //     value = this[index];
+        //     if( typeof dict[ ""+value ] !== 'undefined' ) {
+        //       dict[ ""+value ].count = 1;
+        //       lastChosen = index;
+        //     }else{
+        //       lastChosen = null;
+        //     }
+        //   }
     
-        for(var i = 0; i < arguments.length; i+=2) {
-          dict[ "" + arguments[i] ] = { repeat: arguments[i+1], count: 0 };
-        }
-
-        this.pick = function() {
-          var value = 0, index, lastValue;
-          if(this[lastChosen]) lastValue = this[lastChosen]
-
-          if(lastChosen !== null && dict[ lastValue ].count++ <= dict[ lastValue ].repeat) {
-            index = lastChosen;
-            if( dict[ lastValue ].count >= dict[ lastValue ].repeat) {
-              dict[ lastValue ].count = 0;
-              lastChosen = null;
-            };
-          }else{
-            index = Utilities.rndi(0, this.length - 1);
-            value = this[index];
-            if( typeof dict[ ""+value ] !== 'undefined' ) {
-              dict[ ""+value ].count = 1;
-              lastChosen = index;
-            }else{
-              lastChosen = null;
-            }
-          }
-      
-        	return index; // return index, not value as required by secondary notation stuff
-        };
-    
-        return this;
+        return this
       },
   
       random2 : function() {
@@ -398,11 +397,11 @@ var soloGroup = [],
         // window.solo = Utilities.solo
         // window.future = Utilities.future // TODO: fix global reference
         Array.prototype.random = Array.prototype.rnd = Utilities.random
-        Array.prototype.weight = Utilities.weight
-        Array.prototype.fill = Utilities.fill
-        Array.prototype.choose = Utilities.choose
-        // Array.prototype.Rnd = Utilities.random2
-        Array.prototype.merge = Utilities.merge
+        // Array.prototype.weight = Utilities.weight
+        // Array.prototype.fill = Utilities.fill
+        // Array.prototype.choose = Utilities.choose
+        // // Array.prototype.Rnd = Utilities.random2
+        // Array.prototype.merge = Utilities.merge
       }  
     }
   
