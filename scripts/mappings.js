@@ -584,10 +584,8 @@ module.exports = function( Gibber ) {
           mapping.input = mapping.follow
           mapping.bus = new Gibber.Audio.Core.Bus2({ amp:0 }).connect()
           mapping.connect( mapping.bus )
-        
-          mapping.replace = function( replacementObject, key, Key  ) {
-            // _console.log( key, replacementObject )
-            
+          
+          mapping.replace = function( replacementObject, key, Key  ) {            
             // what if new mapping isn't audio type?
             if ( replacementObject[ Key ].timescale === from.timescale ) {
               var idx = mapping.follow.input[ from.Name ].targets.indexOf( target )

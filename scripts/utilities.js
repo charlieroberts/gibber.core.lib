@@ -402,7 +402,7 @@ var soloGroup = [],
         // Array.prototype.choose = Utilities.choose
         // // Array.prototype.Rnd = Utilities.random2
         // Array.prototype.merge = Utilities.merge
-      }  
+      }
     }
   
   return Utilities
