@@ -70,6 +70,9 @@ var Pattern = function() {
     stepSize : 1,
     integersOnly : false,
     filters : [],
+    /*humanize: function() {
+      
+    },*/
     onchange : null,
 
     range : function() {
