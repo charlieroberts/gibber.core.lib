@@ -96,11 +96,12 @@ var Gibber = {
   // },
   Modules : {},
  	import : function( path, exportTo, shouldSave ) {
+    // XXX should be replaced with a Promise
     var _done = null
     console.log( 'Loading module ' + path + '...' )
 
     if( path.indexOf( 'http:' ) === -1 ) { 
-      console.log( 'loading via post', path )
+      //console.log( 'loading via post', path )
       $.post(
         Gibber.Environment.SERVER_URL + '/gibber/'+path, {},
         function( d ) {
@@ -143,7 +144,21 @@ var Gibber = {
       document.head.appendChild( script )
     }
     return { done: function( fcn ) { _done =  fcn } }
- 	},  
+ 	}, 
+
+  loadText: function( path ) {
+    var _done = null
+    console.log( 'Loading text ' + path + '....' )
+
+    $.post(
+      Gibber.Environment.SERVER_URL + '/gibber/'+path, {},
+      function( d ) {
+        var json = JSON.parse( d ) 
+        if( _done ) { _done( json.text ) }
+      }
+    )
+    return { done: function( fcn ) { _done = fcn } }
+  }, 
   
   // log: function( msg ) { 
   //   //console.log( "LOG", typeof msg )
@@ -419,42 +434,86 @@ var Gibber = {
   
   defineSequencedProperty : function( obj, key, priority ) {
     var fnc = obj[ key ], seqNumber, seqNumHash = {}, seqs = {}
+    
+    /* 
+      seqNumHash is used to store a unique id number in the Seq objects seq array
+      that is accessed via the property name and sequence number
+    */
 
     if( !obj.seq && Gibber.Audio ) {
-      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority, target:obj })
+      obj.seq = Gibber.Audio.Seqs.Seq({ doNotStart:true, scale:obj.scale, priority:priority, target:obj }) 
     }
     
-    fnc.seq = function( _v,_d, num ) {
-      var seq
+    //seqs = obj.seq.seqs
+    
+    fnc.score = function( v,d,n ) {
+      return function() {
+        fnc.seq( v,d,n )
+      }
+    }
+    obj[ key +'_' ] = function() {
+      var args = Array.prototype.slice.call( arguments, 0 )
+
+      var out = function() {
+        fnc.apply( obj, args )
+      }
+
+      return out
+    }
+    
+    fnc.seq = function( _v,_d, seqNumberForKey ) {
+      var seq, uniqueSeqID, autofire = false
       if( typeof _v === 'string' && ( obj.name === 'Drums' || obj.name === 'XOX' || obj.name === 'Ensemble' )) {
         _v = _v.split('')
         if( typeof _d === 'undefined' ) _d = 1 / _v.length
+      }else if( typeof _d === 'undefined' ) {
+        autofire = true
       }
       
       if( typeof obj.seq === 'function' ) {
         obj.seq = obj.object.seq // cube.position etc. TODO: Fix this hack!
       }
       
+      seqs = obj.seq.seqs
+      
       var v = $.isArray(_v) ? _v : [_v],
           d = $.isArray(_d) ? _d : typeof _d !== 'undefined' ? [_d] : null,
+          valuesPattern = Gibber.construct( Gibber.Pattern, v ),
+          durationsPattern = Gibber.construct( Gibber.Pattern, d ),
           args = {
             'key': key,
-            values: [ Gibber.construct( Gibber.Pattern, v ) ],
-            durations: d !== null ? [ Gibber.construct( Gibber.Pattern, d ) ] : null,
+            values: [ valuesPattern ],
+            durations: d !== null ? [ durationsPattern ] : null,
             target: obj,
             'priority': priority
           }
-
       
-      if( typeof num === 'undefined' ) num = 0 // _num++
-       
-      if( typeof seqs[ num ] !== 'undefined' ) {
-        seqs[ num ].shouldStop = true
-        delete seqs[ num ]
-        //obj.seq.seqs.splice( seqNumHash[ num ], 1 )
+      valuesPattern.patternName = key + '_values'
+      durationsPattern.patternName = key + '_durations'
+
+      if( typeof seqNumberForKey === 'undefined' ) seqNumberForKey = 0 // _num++
+      
+      if( typeof seqNumHash[ key ] === 'undefined' ) seqNumHash[ key ] = []
+      
+      uniqueSeqID = seqNumHash[ key ][ seqNumberForKey ] //seqs[  ]
+      
+      var shouldSplice = -1
+      
+      // // TODO: what about scheduling chords through multiple autofire note sequences?
+      // if( !autofire ) { // check and make sure autofire doesn't exist for this key
+      //   for( var i = obj.seq.autofire.length - 1; i > 0; i-- ) {
+      //     var autofireSeq = obj.seq.autofire[ i ]
+      //     if( autofireSeq.key === key ) {
+      //       obj.seq.autofire.splice( i, 1 )
+      //       break;
+      //     }
+      //   }
+      // }
+      //console.log( "HASH", uniqueSeqID, "numhash", seqNumHash[ key ] )
+      if( typeof uniqueSeqID !== 'undefined' && typeof seqs[ uniqueSeqID ] !== 'undefined' ) {
+        shouldSplice = uniqueSeqID
       }
             
-      var valuesPattern = args.values[0]
       if( v.randomFlag ) {
         valuesPattern.filters.push( function() {
           var idx = Gibber.Utilities.rndi(0, valuesPattern.values.length - 1)
@@ -466,7 +525,6 @@ var Gibber = {
       }
 
       if( d !== null ) {
-        var durationsPattern = args.durations[0]
         if( d.randomFlag ) {
           durationsPattern.filters.push( function() { 
             var idx = Gibber.Utilities.rndi(0, durationsPattern.values.length - 1)
@@ -482,17 +540,39 @@ var Gibber = {
       
       valuesPattern.seq = obj.seq
       
-      obj.seq.add( args )
+      //console.log( "SHOULD SPLICE", shouldSplice )
+      if( shouldSplice > -1 ) {        
+        var old = autofire ? obj.seq.autofire.splice( shouldSplice, 1 )[0] : seqs.splice( shouldSplice, 1 )[ 0 ]
+        for( var timestamp in obj.seq.timeline ) {
+          var timelinePos = obj.seq.timeline[ timestamp ],
+              idx = timelinePos.indexOf( old )
+          
+          if( idx > -1 ) {
+            timelinePos.splice( idx, 1 )
+          }
+        }
+        obj.seq.add( args, shouldSplice )
+      }else{
+        // var old = autofire ? obj.seq.autofire.splice( shouldSplice, 1 )[0] : seqs.splice( shouldSplice, 1 )[ 0 ]
+        // for( var timestamp in obj.seq.timeline ) {
+        //   var timelinePos = obj.seq.timeline[ timestamp ],
+        //       idx = timelinePos.indexOf( old )
+        //
+        //   if( idx > -1 ) {
+        //     timelinePos.splice( idx, 1 )
+        //   }
+        // }
+        obj.seq.add( args )
+        uniqueSeqID = obj.seq.seqs.length - 1
+      }
       
-      seqNumber = obj.seq.seqs.length - 1
-      seqs[ num ] = seq = obj.seq.seqs[ seqNumber ]
-      seqNumHash[ num ] = seqNumber   
-      //seqNumber = d !== null ? obj.seq.seqs.length - 1 : obj.seq.autofire.length - 1
-      //seqs[ seqNumber ] = d !== null ? obj.seq.seqs[ num ] : obj.seq.autofire[ num ]
+      if( !autofire )
+        seqNumHash[ key ][ seqNumberForKey ] = uniqueSeqID
       
-      fnc[ num ] = {}
+      //console.log( "HASH NUMBER", uniqueSeqID, "SEQ NUMBER", seqNumberForKey )
+      fnc[ seqNumberForKey ] = {}
       
-      Object.defineProperties( fnc[ num ], {
+      Object.defineProperties( fnc[ seqNumberForKey ], {
         values: {
           configurable:true,
           get: function() { 
@@ -512,9 +592,9 @@ var Gibber = {
             }
 
             if( d !== null ) {
-              obj.seq.seqs[ seqNumber ].values = pattern
+              obj.seq.seqs[ uniqueSeqID ].values = pattern
             }else{
-              obj.seq.autofire[ seqNumber ].values = pattern
+              obj.seq.autofire[ uniqueSeqID ].values = pattern
             }
           }
         },
@@ -539,13 +619,13 @@ var Gibber = {
               pattern = [ pattern ]
             }
             
-            obj.seq.seqs[ seqNumber ].durations = pattern   //.splice( 0, 10000, v )
+            obj.seq.seqs[ uniqueSeqID ].durations = pattern   //.splice( 0, 10000, v )
           },
         },
       })
       
-      fnc[ num ].seq = function( v, d ) {
-        fnc.seq( v,d, num ) 
+      fnc[ seqNumberForKey ].seq = function( v, d ) {
+        fnc.seq( v,d,seqNumberForKey ) 
       }
       
       if( !obj.seq.isRunning ) {
@@ -553,19 +633,55 @@ var Gibber = {
         obj.seq.start( true, priority )
       }
             
-      fnc.seq.stop = function() { seqs[ seqNumber ].shouldStop = true } 
-    
+      fnc.seq.stop = function() {
+        var seqNumbersForKey = seqNumHash[ key ]
+        
+        for( var i = 0; i < seqNumbersForKey.length; i++ ) {
+          var _num = seqNumbersForKey[ i ],
+              _seq = seqs[ _num ]
+          
+          _seq.shouldStop = true
+        }
+      }
+      
+      fnc[ seqNumberForKey ].stop = function() {
+        seqs[ uniqueSeqID ].shouldStop = true
+      }
+      
       // TODO: property specific stop/start/shuffle etc. for polyseq
       fnc.seq.start = function() {
-        seqs[ seqNumber ].shouldStop = false
-        obj.seq.timeline[0] = [ seq ]                
+        var seqNumbersForKey = seqNumHash[ key ]
+        
+        for( var i = 0; i < seqNumbersForKey.length; i++ ) {
+          var _num = seqNumbersForKey[ i ],
+              _seq = seqs[ _num ]
+          
+          _seq.shouldStop = false
+          
+          if( ! obj.seq.timeline[0] ) obj.seq.timeline[0] = []
+          obj.seq.timeline[0].push( _seq )
+
+          obj.seq.nextTime = 0
+        }
+
+        if( !obj.seq.isRunning ) { 
+          obj.seq.start( false, priority )
+        }
+      }
+      
+      fnc[ seqNumberForKey ].start = function() {
+        var _seq = seqs[ uniqueSeqID ]
+        _seq.shouldStop = false
+        
+        obj.seq.timeline[0] = [ _seq ]
         obj.seq.nextTime = 0
       
         if( !obj.seq.isRunning ) { 
           obj.seq.start( false, priority )
         }
+        seqs[ uniqueSeqID ].shouldStop = false
       }
-    
+  
       fnc.seq.repeat = function( numberOfTimes ) {
         var repeatCount = 0
       
@@ -582,20 +698,20 @@ var Gibber = {
         fnc.values.filters.push( filter )
       }
     
-      fnc.score = function( __v__, __d__ ) {
-        return fnc.seq.bind( obj, __v__, __d__ )
+      fnc[ seqNumberForKey ].score = function( __v__, __d__ ) {
+        return fnc.seq.bind( obj, __v__, __d__, seqNumberForKey )
       }
     
       Object.defineProperties( fnc, {
         values: { 
           configurable: true,
-          get: function() { return fnc[ num ].values },
-          set: function( val ) { return fnc[ num ].values = val },
+          get: function() { return fnc[ seqNumberForKey ].values },
+          set: function( val ) { return fnc[ seqNumberForKey ].values = val },
         },
         durations: { 
           configurable: true,
-          get: function() { return fnc[ num ].durations },
-          set: function( val ) { return fnc[ num ].durations = val },
+          get: function() { return fnc[ seqNumberForKey ].durations },
+          set: function( val ) { return fnc[ seqNumberForKey ].durations = val },
         }
       })
       
@@ -749,6 +865,9 @@ var Gibber = {
     _useMappings = _useMappings === false ? false : true
     
     Gibber.defineProperty( obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority )
+    if( dict && dict.perNote ) { 
+      Gibber.defineProperty( obj, _key+'V', shouldSeq, shouldRamp, dict, _useMappings, priority )
+    }
   },
   
   // obj, _key, shouldSeq, shouldRamp, dict, _useMappings, priority

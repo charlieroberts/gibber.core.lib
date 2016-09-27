@@ -26,6 +26,15 @@ var PatternProto = {
     
     return args
   },
+  checkForUpdateFunction: function( name, _arguments ) {
+    var args = Array.prototype.slice.call( _arguments, 0 )
+
+    if( this.listeners[ name ] ) {
+      this.listeners[ name ].apply( this, args )
+    }else if( Pattern.listeners[ name ] ) {
+      Pattern.listeners[ name ].apply( this, args )
+    }
+  },
   _onchange : function() {},
 }
 
@@ -42,7 +51,7 @@ var Pattern = function() {
     if( len === 1 ) { 
       idx = 0 
     }else{
-      idx = fnc.phase >-1 ? Math.floor( fnc.start + (fnc.phase % len ) ) : Math.floor( fnc.end + (fnc.phase % len ) )
+      idx = fnc.phase > -1 ? Math.floor( fnc.start + (fnc.phase % len ) ) : Math.floor( fnc.end + (fnc.phase % len ) )
     }
     
     val = fnc.values[ Math.floor( idx % fnc.values.length ) ]
@@ -51,8 +60,21 @@ var Pattern = function() {
     fnc.phase += fnc.stepSize * args[ 1 ]
     val = args[ 0 ]
     
-    if( typeof val === 'function' ) val = val()
-    
+    // check to see if value is a function, and if so evaluate it
+    if( typeof val === 'function' ) {
+      val = val()
+    }
+    /*else if ( Array.isArray( val ) ) {
+      // if val is an Array, loop through array and evaluate any functions found there. TODO: IS THIS SMART?
+
+      for( var i = 0; i < val.length; i++ ){
+        if( typeof val[ i ] === 'function' ) {
+          val[ i ] = val[ i ]()
+        }
+      }
+    }
+    */
+
     // if pattern has update function, set new value
     if( fnc.update ) fnc.update.value = val
     
@@ -70,31 +92,50 @@ var Pattern = function() {
     stepSize : 1,
     integersOnly : false,
     filters : [],
-    /*humanize: function() {
-      
-    },*/
     onchange : null,
 
     range : function() {
+      var start, end
+      
       if( Array.isArray( arguments[0] ) ) {
-        fnc.start = arguments[0][0]
-        fnc.end   = arguments[0][1]
+        start = arguments[0][0]
+        end   = arguments[0][1]
       }else{
-        fnc.start = arguments[0]
-        fnc.end   = arguments[1]
+        start = arguments[0]
+        end   = arguments[1]
       }
       
-      return fnc;
+      if( start < end ) {
+        fnc.start = start
+        fnc.end = end
+      }else{
+        fnc.start = end
+        fnc.end = start
+      }
+
+      this.checkForUpdateFunction( 'range', [ fnc ] )
+
+      return fnc
     },
     
     set: function() {
+      var args = Array.isArray( arguments[ 0 ] ) ? arguments[ 0 ] : arguments
+      
       fnc.values.length = 0
       
-      for( var i = 0; i < arguments[0].length; i++ ) {
-        fnc.values.push( arguments[0][i] )
+      for( var i = 0; i < args.length; i++ ) {
+        fnc.values.push( args[ i ] )
       }
       
-      if( fnc.end > fnc.values.length - 1 ) { fnc.end = fnc.values.length - 1 }
+      fnc.end = fnc.values.length - 1
+      
+      // if( fnc.end > fnc.values.length - 1 ) {
+      //   fnc.end = fnc.values.length - 1
+      // }else if( fnc.end < )
+      
+      fnc._onchange()
+      
+      return fnc
     },
      
     reverse : function() { 
@@ -115,7 +156,34 @@ var Pattern = function() {
       
       return fnc;
     },
-    
+    // humanize: function( randomMin, randomMax ) {
+ //      var lastAmt = 0
+ //
+ //      for( var i = 0; i < this.filters.length; i++ ) {
+ //        if( this.filters[ i ].humanize ) {
+ //          lastAmt = this.filters[ i ].lastAmt
+ //          this.filters.splice( i, 1 )
+ //          break;
+ //        }
+ //      }
+ //
+ //      var filter = function( args ) {
+ //        console.log( filter.lastAmt, args[0])
+ //        args[ 0 ] -= filter.lastAmt
+ //        filter.lastAmt = Gibber.Clock.time( Gibber.Utilities.rndi( randomMin, randomMax ) )
+ //
+ //        console.log( "LA", filter.lastAmt )
+ //        args[0] += filter.lastAmt
+ //
+ //        return args
+ //      }
+ //      filter.lastAmt = lastAmt
+ //      filter.humanize = true
+ //
+ //      this.filters.push( filter )
+ //
+ //      return this
+ //    },
     repeat: function() {
       var counts = {}
     
@@ -171,10 +239,14 @@ var Pattern = function() {
         
         if( $.isArray( val ) ) {
           for( var j = 0; j < val.length; j++ ) {
-            val[ j ] = fnc.integersOnly ? Math.round( val[ j ] + amt ) : val[ j ] + amt
+            if( typeof val[ j ] === 'number' ) {
+              val[ j ] = fnc.integersOnly ? Math.round( val[ j ] + amt ) : val[ j ] + amt
+            }
           }
         }else{
-          fnc.values[ i ] = fnc.integersOnly ? Math.round( fnc.values[ i ] + amt ) : fnc.values[ i ] + amt
+          if( typeof val === 'number' ) {
+            fnc.values[ i ] = fnc.integersOnly ? Math.round( fnc.values[ i ] + amt ) : fnc.values[ i ] + amt
+          }
         }
       }
       
@@ -193,10 +265,14 @@ var Pattern = function() {
         var val = fnc.values[ i ]
         if( $.isArray( val ) ) {
           for( var j = 0; j < val.length; j++ ) {
-            val[ j ] = fnc.integersOnly ? Math.round( val[ j ] * amt ) : val[ j ] * amt
+            if( typeof val[ j ] === 'number' ) {
+              val[ j ] = fnc.integersOnly ? Math.round( val[ j ] * amt ) : val[ j ] * amt
+            }
           }
         }else{
-          fnc.values[ i ] = fnc.integersOnly ? Math.round( fnc.values[ i ] * amt ) : fnc.values[ i ] * amt
+          if( typeof val === 'number' ) {
+            fnc.values[ i ] = fnc.integersOnly ? Math.round( fnc.values[ i ] * amt ) : fnc.values[ i ] * amt
+          }
         }
       }
       fnc._onchange()
@@ -230,8 +306,10 @@ var Pattern = function() {
       var prime0 = fnc.values[ 0 ]
       
       for( var i = 1; i < fnc.values.length; i++ ) {
-        var inverse = prime0 + (prime0 - fnc.values[ i ])
-        fnc.values[ i ] = inverse
+        if( typeof fnc.values[ i ] === 'number' ) {
+          var inverse = prime0 + (prime0 - fnc.values[ i ])
+          fnc.values[ i ] = inverse
+        }
       }
       
       fnc._onchange()
@@ -270,6 +348,13 @@ var Pattern = function() {
     }
   })
   
+  Object.defineProperty( fnc, 'size', {
+    get: function() { return this.values.length },
+    set: function(v){
+      Gibber.log( 'cannot set size of pattern; use pattern.set() to update pattern contents.' )
+    }
+  })
+
   fnc.retrograde = fnc.reverse.bind( fnc )
   
   fnc.end = fnc.values.length - 1
@@ -279,19 +364,42 @@ var Pattern = function() {
   
   fnc.integersOnly = fnc.values.every( function( n ) { return n === +n && n === (n|0); })
   
-  Gibber.createProxyMethods( fnc, [
+  var methodNames =  [
     'rotate','switch','invert','reset', 'flip',
     'transpose','reverse','shuffle','scale',
     'store', 'range', 'set'
-  ], true )
+  ]
+
+  Gibber.createProxyMethods( fnc, methodNames , true )
   
+  // for( var i = 0; i < methodNames.length; i++ ) {
+  //  var name = methodNames[ i ]
+  //
+  //  fnc[ name ].listeners = {}
+  //  }
+  fnc.listeners = {}
+
   Gibber.createProxyProperties( fnc, { 'stepSize':0, 'start':0, 'end':0 })
+  
+  // trying to figure out a way for calls like: a.note.durations.seq( [1/8,1/16], 1/2 ) ...
+    
+  // future( function() {
+  //   fnc._seq = fnc.seq
+  //
+  //   fnc.seq = function() {
+  //     var args = Array.prototype.slice.call( arguments, 0 )
+  //
+  //     fnc.set.seq.apply( fnc, args )
+  //   }
+  // }, ms(100) )
+  
   
   fnc.__proto__ = this.__proto__ 
   
   return fnc
 }
 
+Pattern.listeners = {}
 Pattern.prototype = PatternProto
 
 return Pattern
