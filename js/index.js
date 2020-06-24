@@ -3,7 +3,7 @@ const Gibber = {
   exportTarget: null,
   plugins: [],
   // needed so audio plugin can transfer pattern function string to worklet
-  Pattern: require( './pattern.js' ),
+  __Pattern: require( './pattern.js' ),
 
   /* 
    * const promises = Gibber.init([
@@ -19,60 +19,60 @@ const Gibber = {
   */
 
   init( plugins ) { 
-    this.createPubSub()
+    this.createPubSub( this )
+    this.plugins = plugins
 
     const promises = []
 
     // init each plugin and collect promises
     for( let plugin of plugins ) {
       promises.push( 
-        plugin.init( plugin.options ) 
+        plugin.plugin.init( plugin.options, this ) 
       )
     }
 
-    const finishedInitPromise = Promise.all( promises, ()=> {
-      // do something else here? export?
-      Gibber.publish( 'init' )
+    const p = new Promise( (resolve,reject) => {
+      const finishedInitPromise = Promise.all( promises ).then( values => {
+        Gibber.publish( 'init' )
+        this.Pattern = this.__Pattern( this )
+        this.Seq      = require( './seq.js'      )( this )
+        this.Tidal    = require( './tidal.js'    )( this )
+        this.Euclid   = require( './euclid.js'   )( this )
+        this.Hex      = require( './hex.js'      )( this ) 
+        this.Triggers = require( './triggers.js' )( this )
+        this.Steps    = require( './steps.js'    )( this )
+        resolve()
+      })
     })
   
-    return finishedInitPromise
+    return p
   },
 
-  export( obj, Gibber ) {
-      //Utility.export( obj )
-      //this.Gen.export( obj )
-      //this.Pattern( Gibber ).export( obj )
-      obj.Pattern = this.Pattern( Gibber )
-      obj.Euclid  = require( './euclid.js'  )( Gibber )
-      obj.Hex     = require( './hex.js'     )( Gibber ) 
-      obj.Triggers= require( './triggers.js')( Gibber )
+  export( obj ) {
+    // XXX must keep reference to main pattern function
+    // so it can be serialized and transferred to audioworklet  
+    obj.Pattern  = this.Pattern
+    obj.Seq = this.Seq
+    obj.Tidal = this.Tidal
+    obj.Euclid = this.Euclid
+    obj.Hex = this.Hex
+    obj.Triggers = this.Triggers
 
-      //obj.gen = this.Gen.make
-      //obj.lfo = this.Gen.composites.lfo
-      //obj.Euclid = Euclid( this )
-      //obj.Clock = this.Clock
-      //obj.WavePattern = this.WavePattern
-      //obj.Master = this.Master
-      ////obj.Arp = this.Arp
-      ////obj.Automata = this.Automata
-      //obj.Out = this.Out
-      //obj.Steps = this.Steps
-      //obj.HexSteps = this.HexSteps
-      //obj.Hex = this.Hex
-      //obj.Triggers = this.Triggers
-      //obj.Seq = this.Seq
-      //obj.Tidal = this.Tidal
-      //obj.future = this.Gibberish.utilities.future
-    //}else{
-    //  Gibber.exportTarget = obj
-    //} 
+    this.plugins.forEach( p => {
+      p.plugin.export( obj, Gibber ) 
+    })
+
+    //obj.Clock = this.Clock
+    //obj.WavePattern = this.WavePattern
   },
 
   // XXX stop clock from being cleared.
   clear() { 
     for( let plugin of Gibber.plugins ) {
-      plugin.clear()
+      plugin.plugin.clear()
     }
+
+    this.Seq.clear()
 
     this.publish( 'clear' )
   },
@@ -118,51 +118,56 @@ const Gibber = {
       mods:[],
       name,
 
-      seq( values, timings, number = 0, delay = 0 ) {
-        if( value ) value.name = obj.name
-        const type = obj.type === 'gen' ? 'audio' : obj.type
-        Gibber[ type ].Seq({ 
-          values, 
-          timings, 
-          target:obj,
-          key:name,
-          priority,
-          delay,
-          number,
-          standalone:false,
-          name:obj.name
-        })
-        
-        return obj
-      },
-
-      tidal( pattern,  number = 0, delay = 0 ) {
-        if( value ) value.name = obj.name
-        const type = obj.type === 'gen' ? 'audio' : obj.type
-        const s = Gibber[ type ].Tidal({ 
-          pattern, 
-          target:obj, 
-          key:name,
-          number,
-          delay,
-          standalone:false
-        })
-
-        // return object for method chaining
-        return obj
-      },
-
       fade( from=0, to=1, time=4 ) {
         Gibber[ obj.type ].createFade( from, to, time, obj, name )
         return obj
       }
     }
 
+    Gibber.addSequencing( obj, name, priority, value, '__' )
+
     Object.defineProperty( obj, name, {
       configurable:true,
       get: Gibber[ obj.type ].createGetter( obj, name ),
       set: Gibber[ obj.type ].createSetter( obj, name, post, transform, isPoly )
     })
+  },
+
+  addSequencing( obj, name, priority, value, prefix='' ) {
+    obj[ prefix+name ].sequencers = []
+    obj[ prefix+name ].seq = function ( values, timings, number = 0, delay = 0 ) {
+      if( value !== undefined ) value.name = obj.name
+      const type = obj.type === 'gen' ? 'audio' : obj.type
+      Gibber.Seq({ 
+        values, 
+        timings, 
+        target:obj,
+        key:name,
+        priority,
+        delay,
+        number,
+        standalone:false,
+        name:obj.name
+      })
+
+      return obj
+    }
+
+    obj[ prefix+name ].tidal = function( pattern,  number = 0, delay = 0 ) {
+      if( value !== undefined ) value.name = obj.name
+      const type = obj.type === 'gen' ? 'audio' : obj.type
+      const s = Gibber.Tidal({ 
+        pattern, 
+        target:obj, 
+        key:name,
+        number,
+        delay,
+        standalone:false
+      })
+
+      // return object for method chaining
+      return obj
+    }
   }
   
 }

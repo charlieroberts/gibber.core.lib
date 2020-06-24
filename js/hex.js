@@ -24,7 +24,7 @@ const Hex = function( hexString, time = 1/16, rotation ) {
 
   let __onesAndZeros = onesAndZeros.split('') 
 
-  const pattern = Pattern( ...__onesAndZeros ) 
+  const pattern = Gibber.Pattern( ...__onesAndZeros ) 
   
   pattern.onrender = function( rendered ) {
     rendered.type = 'Hex'

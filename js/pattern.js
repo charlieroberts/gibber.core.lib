@@ -2,7 +2,13 @@ const patternWrapper = function( Gibber ) {
   "use strict"
 
   // hack to pass Gibberish to pattern generator from within worklet processor
-  const Gibberish = Gibber.Gibberish === undefined ? Gibber : Gibber.Gibberish
+  let Gibberish
+  if( Gibber.Gibberish === undefined ) {
+    Gibberish = Gibber.Audio !== undefined ? Gibber.Audio.Gibberish : Gibber 
+  }else{
+    Gibberish = Gibber.Gibberish
+  }
+
   let PatternProto = Object.create( function(){} )
 
   // this prototype is somewhat limited, as we want to be able to add
@@ -610,9 +616,13 @@ const patternWrapper = function( Gibber ) {
 
     if( Gibberish.mode === 'worklet' ) {
       for( let key of PatternProto.__methodNames ) { 
-        fnc.sequences[ key ] = Gibber.addSequencing( fnc, key, 2 ) 
+        fnc.sequences[ key ] = Gibber.Core !== undefined 
+          ? Gibber.Core.addSequencing( fnc, key, 2 ) 
+          : Gibber.addSequencing( fnc,key,2 )
       }
-      fnc.sequences.reset = Gibber.addSequencing( fnc, 'reset', 1 )
+      fnc.sequences.reset = Gibber.Core !== undefined 
+        ? Gibber.Core.addSequencing( fnc, 'reset', 1 )
+        : Gibber.addSequencing( fnc, 'reset', 1 )
     }
     
     // TODO: Gibber.createProxyProperties( fnc, { 'stepSize':0, 'start':0, 'end':0 })
