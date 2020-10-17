@@ -268,6 +268,8 @@ const Gibber = {
   },
 
   addSequencing( obj, name, priority, value, prefix='' ) {
+    if( obj[ prefix+name ] === undefined ) obj[ prefix+name ] = {}
+
     obj[ prefix+name ].sequencers = []
     obj[ prefix+name ].seq = function ( values, timings, number = 0, delay = 0 ) {
       if( value !== undefined ) value.name = obj.name

@@ -185,13 +185,18 @@ module.exports = function( Gibber ) {
     // if x.y.seq() etc. 
     // standalone === false is most common use case
     if( props.standalone === false ) { 
-      let prevSeq = target[ '__' + key ].sequencers[ props.number ] 
+      // required ternary because pattern methohds don't have __ prefix 
+      const targetProp = target[ '__' + key ] === undefined 
+        ? target[ key ] 
+        : target[ '__' + key ]
+      
+      const prevSeq = targetProp.sequencers[ props.number ] 
       if( prevSeq !== undefined ) { 
         prevSeq.clear();
       }
 
       // XXX you have to add a method that does all this shit on the worklet. crap.
-      target[ '__' + key ].sequencers[ props.number ] = target[ '__'+key ][ props.number ] = seq
+      targetProp.sequencers[ props.number ] = targetProp[ props.number ] = seq
       seq.start( Gibber.Audio.Clock.time( delay ) )
     }
 

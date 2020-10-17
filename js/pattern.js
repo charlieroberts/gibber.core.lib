@@ -542,7 +542,7 @@ const patternWrapper = function( Gibber ) {
               // getting this clearing to work, perhaps related to proxy behaviors?
               const __seq = Gibber.Seq.sequencers.find( s => s.id === out[ key ][ i ].id )
               if( __seq !== undefined ) {
-                Gibber.Gibberish.worklet.port.postMessage({ address:'method', object:__seq.id, name:'stop', args:[] })
+                Gibber.Audio.Gibberish.worklet.port.postMessage({ address:'method', object:__seq.id, name:'stop', args:[] })
               
                 __seq.stop()
                 __seq.clear()
@@ -615,14 +615,16 @@ const patternWrapper = function( Gibber ) {
     fnc.sequences = {}
 
     if( Gibberish.mode === 'worklet' ) {
+
       for( let key of PatternProto.__methodNames ) { 
-        fnc.sequences[ key ] = Gibber.Core !== undefined 
-          ? Gibber.Core.addSequencing( fnc, key, 2 ) 
-          : Gibber.addSequencing( fnc,key,2 )
+        Gibber.addSequencing( fnc,key,2,undefined )
       }
-      fnc.sequences.reset = Gibber.Core !== undefined 
-        ? Gibber.Core.addSequencing( fnc, 'reset', 1 )
-        : Gibber.addSequencing( fnc, 'reset', 1 )
+      //for( let key of PatternProto.__methodNames ) { 
+      //  fnc.sequencers[ key ] = Gibber.Core !== undefined 
+      //    ? Gibber.Core.addSequencing( fnc, key, 2 ) 
+      //    : Gibber.addSequencing( fnc,key,2 )
+      //}
+      fnc.sequences.reset = Gibber.addSequencing( fnc, 'reset', 1 )
     }
     
     // TODO: Gibber.createProxyProperties( fnc, { 'stepSize':0, 'start':0, 'end':0 })
