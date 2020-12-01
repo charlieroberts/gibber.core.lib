@@ -93,10 +93,20 @@ const patternWrapper = function( Gibber ) {
       }
     },
 
+    copy() {
+      const p = Pattern( ...this.values )
+      //this.filters.forEach( f => p.addFilter( f ) )
+      p.start = this.start
+      p.end   = this.end
+      p.phase = this.phase
+
+      return p
+    },
+
     __methodNames:  [
       'rotate','switch','invert','flip',
       'transpose','reverse','shuffle','scale',
-      'store', 'range', 'set', 'freeze', 'thaw'
+      'store', 'range', 'set', 'freeze', 'thaw', 'double'
     ]
 
   })
@@ -204,7 +214,12 @@ const patternWrapper = function( Gibber ) {
         this.seq = seq
       },
 
-      range() {
+      range(...args) {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.range( ...args )
+          return this
+        }
+
         if( !fnc.__frozen ) {
           let start, end
           
@@ -229,8 +244,35 @@ const patternWrapper = function( Gibber ) {
 
         return fnc
       },
-      
-      set() {
+      double(...args) {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.double(...args)
+          return this
+        }
+        if( !fnc.__frozen ) {
+
+          fnc.values.push( ...fnc.values ) 
+          
+          fnc.end = fnc.values.length - 1
+          
+          // if( fnc.end > fnc.values.length - 1 ) {
+          //   fnc.end = fnc.values.length - 1
+          // }else if( fnc.end < )
+          if( Gibberish.mode === 'processor' ) {
+            fnc.__message( 'values', fnc.values ) 
+            fnc.__message( '_onchange', true ) 
+          }
+          fnc._onchange()
+        }
+        
+        return fnc
+      },   
+
+      set(...args) {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.set(...args)
+          return this
+        }
         if( !fnc.__frozen ) {
 
           let args = Array.isArray( arguments[ 0 ] ) ? arguments[ 0 ] : arguments
@@ -257,6 +299,10 @@ const patternWrapper = function( Gibber ) {
       },
        
       reverse() {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.reverse()
+          return this
+        }
         if( !fnc.__frozen ) {
           let array = fnc.values,
               left = null,
@@ -356,6 +402,10 @@ const patternWrapper = function( Gibber ) {
       },
     
       reset() { 
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.reset()
+          return this
+        }
         if( !fnc.__frozen ) {
           // XXX replace with some type of standard deep copy
           if( Array.isArray( fnc.original[0] ) ) {
@@ -384,6 +434,10 @@ const patternWrapper = function( Gibber ) {
       store() { fnc.storage[ fnc.storage.length ] = fnc.values.slice( 0 ); return fnc; },
 
       transpose( amt ) { 
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.transpose( amt )
+          return this
+        }
         if( !fnc.__frozen ) {
           for( let i = 0; i < fnc.values.length; i++ ) { 
             let val = fnc.values[ i ]
@@ -411,6 +465,10 @@ const patternWrapper = function( Gibber ) {
       },
 
       shuffle() { 
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.shuffle( )
+          return this
+        }
         if( !fnc.__frozen ) {
           Gibber.Utility.shuffle( fnc.values )
           fnc._onchange()
@@ -420,6 +478,10 @@ const patternWrapper = function( Gibber ) {
       },
 
       scale( amt ) { 
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.scale( amt )
+          return this
+        }
         if( !fnc.__frozen ) {
           fnc.values.map( (val, idx, array) => {
             if( Array.isArray( val ) ) {
@@ -447,6 +509,10 @@ const patternWrapper = function( Gibber ) {
       },
 
       flip() {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.flip( )
+          return this
+        }
         if( !fnc.__frozen ) {
           let start = [],
               ordered = null
@@ -474,6 +540,10 @@ const patternWrapper = function( Gibber ) {
       },
       
       invert() {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.invert( )
+          return this
+        }
         if( !fnc.__frozen ) {
           let prime0 = fnc.values[ 0 ]
           
@@ -496,6 +566,10 @@ const patternWrapper = function( Gibber ) {
       },
     
       switch( to ) {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.switch( to )
+          return this
+        }
         if( !fnc.__frozen ) {
           if( fnc.storage[ to ] ) {
             fnc.values = fnc.storage[ to ].slice( 0 )
@@ -508,6 +582,10 @@ const patternWrapper = function( Gibber ) {
       },
     
       rotate( amt ) {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.rotate( amt )
+          return this
+        }
         if( !fnc.__frozen ) {
           if( amt > 0 ) {
             while( amt > 0 ) {
@@ -648,7 +726,7 @@ const patternWrapper = function( Gibber ) {
         out = Gibberish.Proxy( 'pattern', { inputs:fnc.values, isPattern:true, filters:fnc.filters, id:fnc.id }, fnc ) 
 
         if( isGen === true ) { 
-          // must have a priority or it screws us codegen for analysis
+          // must have a priority or it screws up codegen for analysis
           args[0].priority = 0
           Gibberish.analyzers.push( args[0] )
           Gibberish.dirty( Gibberish.analyzers )
@@ -664,6 +742,8 @@ const patternWrapper = function( Gibber ) {
       Pattern.children.push( out )
 
       if( fnc.onrender ) fnc.onrender( out )
+
+      fnc.__rendered = out
 
       return out
     }

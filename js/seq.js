@@ -1,24 +1,7 @@
 module.exports = function( Gibber ) {
-
-  const Seq = function( props ) { 
-    let   __values  = props.values
-    const __timings = props.timings
-    const delay     = props.delay
-    const target    = props.target
-    const key       = props.key
-    const priority  = props.priority
-    let   rate      = props.rate || 1
-    let   density   = props.density || 1
-    let   autotrig  = false
-    const render    = props.render || 'Audio'
-
-    const Gibberish = Gibber.Audio.Gibberish !== undefined ? Gibber.Audio.Gibberish : null
-
-    if( __values.type === 'gen' ) __values = __values.render()
-
-    const values = Array.isArray( __values ) 
-      ? Gibber.Pattern( ...__values ).render()
-      : Gibber.Pattern( __values    ).render()
+  const addValuesFilters = (seq,key,target) => {
+    const values = seq.values
+    const __values = seq.values
 
     if( __values.randomFlag ) {
       values.addFilter( ( args,ptrn ) => {
@@ -42,6 +25,41 @@ module.exports = function( Gibber ) {
         return args
       })
     } 
+  }
+
+  const Seq = function( props ) { 
+    let   __values  = props.values
+    const __timings = props.timings
+    const delay     = props.delay
+    const target    = props.target
+    const key       = props.key
+    const priority  = props.priority
+    let   rate      = props.rate || 1
+    let   density   = props.density || 1
+    let   autotrig  = false
+    const render    = props.render || 'Audio'
+
+    const Gibberish = Gibber.Audio.Gibberish !== undefined ? Gibber.Audio.Gibberish : null
+
+    if( __values.type === 'gen' ) {
+      __values = __values.render()
+    }
+
+    // convert to pattern if needed and render
+    const values = Array.isArray( __values ) 
+      ? Gibber.Pattern( ...__values ).render()
+      : typeof __values === 'function' && __values.isPattern 
+        ? __values.render()
+        : Gibber.Pattern( __values ).render()
+
+    // if an array of values is passed, let users call pattern method on that array, for example:
+    // a.note.seq( b=[0,1,2,3], 1/4 )
+    // b.transpose.seq( 1,1 )
+    if( Array.isArray( __values ) ) {
+      Object.assign( __values, values )
+    } else if (typeof __values === 'object' && __values.type==='gen') {
+      props.values.addFilter = values.addFilter.bind( values )
+    }
 
     // process time values
     if( Gibber[ render ].timeProps[ target.name ] !== undefined && Gibber[ render ].timeProps[ target.name ].indexOf( key ) !== -1  ) {
@@ -107,6 +125,9 @@ module.exports = function( Gibber ) {
       timings.__delayAnnotations = true
     }
 
+    // if an array is passed to the seq, enable users to call pattern methods on array
+    if( Array.isArray( __timings ) ) Object.assign( __timings, timings )
+
     const clear = render === 'Audio'
       ? function() {
           this.stop()
@@ -146,9 +167,11 @@ module.exports = function( Gibber ) {
 
     // XXX need to fix so that we can use the clock rate as the base
     // XXX need to abstract this so that a graphics sequencer could also be called...
-    const seq = Gibber.Audio.Gibberish.Sequencer2({ values, timings, density, target, key, priority, rate:1/*Gibber.Clock.AudioClock*/, clear, autotrig, mainthreadonly:props.mainthreadonly })
+    const seq = Gibber.Audio.Gibberish.Sequencer({ values, timings, density, target, key, priority, rate:1/*Gibber.Clock.AudioClock*/, clear, autotrig, mainthreadonly:props.mainthreadonly })
 
     values.setSeq( seq )
+
+    addValuesFilters( seq,key )
 
     if( autotrig === false ) {
       timings.setSeq( seq )
@@ -185,7 +208,7 @@ module.exports = function( Gibber ) {
     // if x.y.seq() etc. 
     // standalone === false is most common use case
     if( props.standalone === false ) { 
-      // required ternary because pattern methohds don't have __ prefix 
+      // required ternary because pattern methods don't have __ prefix 
       const targetProp = target[ '__' + key ] === undefined 
         ? target[ key ] 
         : target[ '__' + key ]
