@@ -27,10 +27,13 @@ const Steps = {
       const seq = Gibber.Seq({
         values: usesStringValues ? values : key,
         timings: usesStringValues ?  [ 1  / values.length ] : values,
-        'key': target.__isEnsemble !== true ? 'note' : 'play', 
-        target, 
+        'key': target.__isEnsemble !== true ? 'note' : 'trigger', 
+        target: target.__isEnsemble ? target[ target[ key ].name ] : target, 
         priority:0
       })
+
+      const onlyUsesVelocity = typeof key === 'string'
+
 
       if( usesStringValues ) {
         seq.values.addFilter( new Function( 'args', 'ptrn', 
@@ -38,23 +41,25 @@ const Steps = {
               velocity = parseInt( sym, 16 ) / 15
 
           if( isNaN( velocity ) ) {
-            velocity = 0
+            velocity = sym === 'x' 
+              ? 1
+              : sym === 'X'
+                ? 1.5
+                : 0
           }
 
           // TODO: is there a better way to get access to beat, beatOffset and scheduler?
           if( velocity !== 0 ) {
-            ptrn.seq.target.loudness = velocity
+            ${ onlyUsesVelocity ? '' :'ptrn.seq.target.__triggerLoudness = velocity' }
           }
 
-          args[ 0 ] = sym === '.' ? -987654321 : ${typeof key === 'string' ? `'${key}'` : key }
+          args[ 0 ] = sym === '.' ? -987654321 : ${typeof key === 'string' ? 'velocity' : key }
 
           return args
         `) )
       }
 
       stepseq.seqs[ _key ] = seq
-      //stepseq.seqs[ _key ].mode = usesStringValues ? seq.values : seq.timings
-
       stepseq[ _key ] = usesStringValues ? seq.values : seq.timings
     }
 
