@@ -158,7 +158,7 @@ module.exports = function( Gibber ) {
           if( __seq !== undefined ) {
             __seq.stop()
           }
-      }
+        }
 
     values.__patternType = 'values'
     if( timings !== null ) timings.__patternType = 'timings'
@@ -219,7 +219,9 @@ module.exports = function( Gibber ) {
       }
 
       // XXX you have to add a method that does all this shit on the worklet. crap.
-      targetProp.sequencers[ props.number ] = targetProp[ props.number ] = seq
+      targetProp.sequencers[ props.number ] = seq
+      targetProp[ props.number ] = seq 
+      //target.__sequencers.push( seq )
       seq.start( Gibber.Audio.Clock.time( delay ) )
     }
 
