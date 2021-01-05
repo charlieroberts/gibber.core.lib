@@ -145,8 +145,8 @@ const Gibber = {
       type:obj.type,
       __owner:obj,
 
-      fade( from=0, to=1, time=4 ) {
-        Gibber[ obj.type ].createFade( from, to, time, obj, name )
+      fade( from=0, to=1, time=4, delay=0 ) {
+        Gibber[ obj.type ].createFade( from, to, time, obj, name, delay )
         return obj
       }
     }
