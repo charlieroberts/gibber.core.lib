@@ -45,7 +45,17 @@ const patternWrapper = function( Gibber ) {
       let args = [ val, 1, idx ] // 1 is phaseModifier
 
       for( let filter of this.filters ) {
-        args = filter( args, this ) 
+        const __args = args
+        try {
+          args = filter( args, this ) 
+        } catch( e ) {
+          console.error( e )
+          console.log( 'filter problem?' )
+          console.log( `removing bad filter from pattern: ${filter.toString()}` ) 
+          const idx = this.filters.indexOf( filter )
+          this.filters.splice( idx, 1 )
+          args = __args
+        }
       }
 
       // XXX why is this one off from the worklet-side pattern id?
@@ -79,8 +89,31 @@ const patternWrapper = function( Gibber ) {
     // used when _onchange has not been assigned to individual patterns
     _onchange() {},
 
-    addFilter( filter ) {
+    // XXX it would be nice if filters used a similar style to fx chains...
+    // pattern.filters.add( ) etc.
+    addFilter( filter, name=null ) {
+      if( name !== null ) {
+        filter.__name = name
+        const idx = this.filters.findIndex( f => f.__name === name )
+        this.filters.splice( idx, 1 )  
+      }
       this.filters.push( filter )
+      return this
+    },
+
+    removeFilter( idx=null ) {
+      if( idx !== null ) {
+        this.filters.splice( idx, 1 )  
+      }else{
+        this.filters.length = 0
+      }
+
+      return this
+    },
+
+    inspect() {
+      if( Gibberish.mode === 'processor' ) 
+        console.table({ values:this.values.toString(), 'number of filters':this.filters.length, phase:this.phase })
     },
 
     render( cat='Audio' ) {
@@ -274,14 +307,17 @@ const patternWrapper = function( Gibber ) {
           return this
         }
         if( !fnc.__frozen ) {
-
           let args = Array.isArray( arguments[ 0 ] ) ? arguments[ 0 ] : arguments
           
           fnc.values.length = 0
+
+          const tmp = [] 
           
           for( let i = 0; i < args.length; i++ ) {
-            fnc.values.push( args[ i ] )
+            const val = args[i].isPattern === true ? args[ i ].original.slice(0) : args[ i ] 
+            tmp.push( val )
           }
+          fnc.values = tmp
           
           fnc.end = fnc.values.length - 1
           
@@ -292,7 +328,7 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( 'values', fnc.values ) 
             fnc.__message( '_onchange', true ) 
           }
-          fnc._onchange()
+          fnc._onchange( 'set', fnc.values ) //args )
         }
         
         return fnc
@@ -321,7 +357,7 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( '_onchange', true ) 
           }
 
-          fnc._onchange()
+          fnc._onchange( 'reverse', null )
         }
         
         return fnc
@@ -426,12 +462,13 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( 'values', fnc.values ) 
             fnc.__message( '_onchange', true ) 
           }  
-          fnc._onchange()
+          fnc._onchange( 'reset', null )
         }
 
         return fnc 
       },
-      store() { fnc.storage[ fnc.storage.length ] = fnc.values.slice( 0 ); return fnc; },
+
+      store( pos ) { fnc.storage[ pos || fnc.storage.length ] = fnc.values.slice( 0 ); return fnc; },
 
       transpose( amt ) { 
         if( this.__rendered !== undefined && this.__rendered !== this ) {
@@ -456,9 +493,9 @@ const patternWrapper = function( Gibber ) {
           }
           if( Gibberish.mode === 'processor' ) {
             fnc.__message( 'values', fnc.values ) 
-            fnc.__message( '_onchange', true ) 
+            fnc.__message( '_onchange', ['transpose', amt] ) 
           }      
-          fnc._onchange()
+          //fnc._onchange( 'transpose', amt )
         }
         
         return fnc
@@ -471,7 +508,7 @@ const patternWrapper = function( Gibber ) {
         }
         if( !fnc.__frozen ) {
           Gibber.Utility.shuffle( fnc.values )
-          fnc._onchange()
+          fnc._onchange( 'shuffule', null )
         }
         
         return fnc
@@ -502,7 +539,7 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( 'values', fnc.values ) 
             fnc.__message( '_onchange', true ) 
           }
-          fnc._onchange()
+          fnc._onchange( 'scale', amt )
         }
         
         return fnc
@@ -533,7 +570,7 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( 'values', fnc.values ) 
             fnc.__message( '_onchange', true ) 
           }       
-          fnc._onchange()
+          fnc._onchange( 'flip', null )
         }
       
         return fnc
@@ -559,7 +596,7 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( '_onchange', true ) 
           }
 
-          fnc._onchange()
+          fnc._onchange( 'invert', null )
         }
         
         return fnc
@@ -575,7 +612,7 @@ const patternWrapper = function( Gibber ) {
             fnc.values = fnc.storage[ to ].slice( 0 )
           }
           
-          fnc._onchange()
+          fnc._onchange( 'switch', to )
         }
         
         return fnc
@@ -606,7 +643,7 @@ const patternWrapper = function( Gibber ) {
             fnc.__message( '_onchange', true ) 
           }
 
-          fnc._onchange()
+          fnc._onchange( 'rotate', amt )
         }
         
         return fnc
@@ -672,6 +709,21 @@ const patternWrapper = function( Gibber ) {
     
     fnc.end = fnc.values.length - 1
     
+    /*
+    fnc.filters.test = function() { console.log( 'test' ) }
+    
+    fnc.filters.add = function( f ) {
+      this.filters.push( f )
+    }.bind(fnc)
+    fnc.filters.remove = function( idx ) {
+      console.log( 'filter:', this )
+      this.filters.splice( idx, 1 )
+    }.bind( fnc )
+    fnc.filters.inspect = function() {
+      console.log( `there are currenly ${this.length} filters on this pattern` )
+    }.bind(fnc)
+    */
+
     if( Array.isArray( fnc.values[0] ) ) {
       const arr = []
       for( let i = 0; i < fnc.values.length; i++ ) {
