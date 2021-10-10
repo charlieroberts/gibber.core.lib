@@ -1,6 +1,6 @@
 {
   "name": "gibber.core.lib",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "small set of core objects and functions for gibber",
   "main": "js/index.js",
   "scripts": {
