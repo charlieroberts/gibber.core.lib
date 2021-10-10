@@ -98,6 +98,7 @@ const Gibber = {
     }
 
     this.Seq.clear()
+    this.Tidal.clear()
 
     this.publish( 'clear' )
   },
