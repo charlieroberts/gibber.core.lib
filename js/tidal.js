@@ -60,6 +60,33 @@ module.exports = function( Gibber ) {
       })
     }
 
+    let p
+    try {
+      p = Gibber.Audio.Gibberish.Tidal.Pattern( pattern ) 
+    } catch(e) {
+      Gibber.publish( 'error', `\nYour Tidal pattern ${pattern} used invalid syntax.\n` )
+      //console.log(`%c\nYour Tidal pattern ${pattern} used invalid syntax.\n`, `color:white;background:#900` )
+      return null
+    }
+
+    if( key !== 'degree' ) {
+      const tokens = [...pattern.matchAll(/[a-zA-Z]+/g)].map( v=>v[0] )
+      let tokenNotFound = false
+      tokens.forEach( t => {
+        if( target[ t ] === undefined ) {
+          //console.error(
+          //  `%c\nYour Tidal pattern is using a token (${t}) that can't be found on the targeted instrument.`, 
+          //  `color:white;background:#900` 
+          //  ) 
+          
+          Gibber.publish( 'error', `\nYour Tidal pattern is using a token (${t}) that can't be found on the targeted instrument.\n` )
+          tokenNotFound = true
+        }
+      })
+
+      if( tokenNotFound === true ) return null
+    }
+
     const seq = Gibber.Audio.Gibberish.Tidal({ pattern, target, key, priority, filters, mainthreadonly:props.mainthreadonly })
     seq.clear = clear
     seq.uid = Gibber.Audio.Gibberish.Tidal.getUID()
@@ -79,8 +106,10 @@ module.exports = function( Gibber ) {
     if( props.standalone === false ) {
       let prevSeq = target[ '__' + key ].tidals[ number ] 
       if( prevSeq !== undefined ) {
-        const idx = target.__sequencers.indexOf( prevSeq )
-        target.__sequencers.splice( idx, 1 )
+        if( target.__sequencers !== undefined ) {
+          const idx = target.__sequencers.indexOf( prevSeq )
+          target.__sequencers.splice( idx, 1 )
+        }
         // XXX stop() destroys an extra sequencer for some reason????
         prevSeq.stop()
         prevSeq.clear()
@@ -92,6 +121,7 @@ module.exports = function( Gibber ) {
       target[ '__' + key ].tidals[ number ] = target[ '__' + key ][ number ] = seq
     }
 
+    Gibber.publish( 'new tidal', seq )
     return seq
   }
 
