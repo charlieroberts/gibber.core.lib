@@ -273,7 +273,7 @@ const Gibber = {
 
     obj[ prefix+name ].sequencers = []
     obj[ prefix+name ].seq = function ( values, timings, number = 0, delay = 0 ) {
-      if( value !== undefined ) value.name = obj.name
+      if( value !== undefined && typeof value === 'object' ) value.name = obj.name
       const type = obj.type === 'gen' ? 'audio' : obj.type
       Gibber.Seq({ 
         values, 
