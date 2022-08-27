@@ -2,17 +2,17 @@ module.exports = function( Gibber ) {
   const addValuesFilters = (seq,key,target) => {
     const values = seq.values
 
+    // XXX support [1/8,1/4,1/16].rnd( 1/16, 2 ) syntax
+    // to always play 1/16th notes twice
     if( values.randomFlag ) {
       values.addFilter( ( args,ptrn ) => {
         const range = ptrn.values.length - 1
         const idx = Math.round( Math.random() * range )
         return [ ptrn.values[ idx ], 1, idx ] 
       })
-      //for( let i = 0; i < this.values.randomArgs.length; i+=2 ) {
-      //  valuesPattern.repeat( this.values.randomArgs[ i ], this.values.randomArgs[ i + 1 ] )
-      //}
-    }else{
-      debugger
+      for( let i = 0; i < values.randomArgs.length; i+=2 ) {
+        values.repeat( values.randomArgs[ i ], values.randomArgs[ i + 1 ] )
+      }
     }
 
     // trigger autotrig patterns
@@ -36,9 +36,9 @@ module.exports = function( Gibber ) {
         const idx = Math.round( Math.random() * range )
         return [ ptrn.values[ idx ], 1, idx ] 
       })
-      //for( let i = 0; i < this.values.randomArgs.length; i+=2 ) {
-      //  valuesPattern.repeat( this.values.randomArgs[ i ], this.values.randomArgs[ i + 1 ] )
-      //}
+      for( let i = 0; i < __timings.randomArgs.length; i+=2 ) {
+        __timings.repeat( __timings.randomArgs[ i ], __timings.randomArgs[ i + 1 ] )
+      }
     }
 
     const filter = renderMode === 'Audio' 
@@ -103,6 +103,7 @@ module.exports = function( Gibber ) {
       __values.removeFilter = values.removeFilter.bind( values )
       __values.inspect = values.inspect.bind( values )
       if( __values.randomFlag !== undefined ) values.randomFlag = __values.randomFlag
+      if( __values.randomArgs !== undefined ) values.randomArgs = __values.randomArgs
     } else if( typeof __values === 'object' && __values.type==='gen' ) {
       props.values.addFilter = values.addFilter.bind( values )
       props.values.removeFilter = values.removeFilter.bind( values )
@@ -145,6 +146,7 @@ module.exports = function( Gibber ) {
       Object.assign( __timings, timings )
       __timings.addFilter = timings.addFilter.bind( timings )
       if( __timings.randomFlag !== undefined ) timings.randomFlag = __timings.randomFlag
+      if( __timings.randomArgs !== undefined ) timings.randomArgs = __timings.randomArgs
     }
     if( autotrig === false ) {
       timings.output = { time:'time', shouldExecute:0 }

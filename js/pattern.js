@@ -235,6 +235,7 @@ const patternWrapper = function( Gibber ) {
       __listeners: [],
       onchange : null,
       isop:true,
+      repeats: {},
       isGen,
 
       freeze( shouldFreezeTheory = true ) {
@@ -394,11 +395,15 @@ const patternWrapper = function( Gibber ) {
    //
    //      return this
    //    },
-      repeat() {
-        let counts = {}
-      
+      //  TODO how do we make this run in the audio thread?
+      //  syn.note.seq( [0,1,2,3].rnd( 1/16,2, 1/3,3 )
+      repeat( ...args ) {
+        if( this.__rendered !== undefined && this.__rendered !== this ) {
+          this.__rendered.repeat(...args)
+          return this
+        }
         for( let i = 0; i < arguments.length; i +=2 ) {
-          counts[ arguments[ i ] ] = {
+          fnc.repeats[ arguments[ i ] ] = {
             phase: 0,
             target: arguments[ i + 1 ]
           }
@@ -409,26 +414,26 @@ const patternWrapper = function( Gibber ) {
           let value = args[ 0 ], phaseModifier = args[ 1 ], output = args
           
           //console.log( args, counts )
-          if( repeating === false && counts[ value ] ) {
+          if( repeating === false && fnc.repeats[ value ] ) {
             repeating = true
             repeatValue = value
             repeatIndex = args[2]
           }
           
           if( repeating === true ) {
-            if( counts[ repeatValue ].phase !== counts[ repeatValue ].target ) {
+            if( fnc.repeats[ repeatValue ].phase !== fnc.repeats[ repeatValue ].target ) {
               output[ 0 ] = repeatValue            
               output[ 1 ] = 0
               output[ 2 ] = repeatIndex
               //[ val, 1, idx ]
-              counts[ repeatValue ].phase++
+              fnc.repeats[ repeatValue ].phase++
             }else{
-              counts[ repeatValue ].phase = 0
+              fnc.repeats[ repeatValue ].phase = 0
               output[ 1 ] = 1
               if( value !== repeatValue ) { 
                 repeating = false
               }else{
-                counts[ repeatValue ].phase++
+                fnc.repeats[ repeatValue ].phase++
               }
             }
           }
