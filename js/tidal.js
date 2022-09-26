@@ -64,8 +64,7 @@ module.exports = function( Gibber ) {
     try {
       p = Gibber.Audio.Gibberish.Tidal.Pattern( pattern ) 
     } catch(e) {
-      Gibber.publish( 'error', `\nYour Tidal pattern ${pattern} used invalid syntax.\n` )
-      //console.log(`%c\nYour Tidal pattern ${pattern} used invalid syntax.\n`, `color:white;background:#900` )
+      Gibber.publish( 'error', `Your Tidal pattern ${pattern} used invalid syntax.` )
       return null
     }
 
