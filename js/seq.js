@@ -1,3 +1,5 @@
+const autotrig = [ 'note','chord','trigger','pickplay','notec','notef' ]
+
 module.exports = function( Gibber ) {
   const addValuesFilters = (seq,key,target) => {
     const values = seq.values
@@ -15,7 +17,7 @@ module.exports = function( Gibber ) {
     }
 
     // trigger autotrig patterns
-    if( key === 'note' || key === 'chord' || key === 'trigger' || key === 'notef' || key === 'pickplay' ) {
+    if( autotrig.indexOf( key ) > -1 ) {
       values.addFilter( ( args,ptrn ) => {
         if( ptrn.seq.target.autotrig !== undefined ) {
           for( let s of ptrn.seq.target.autotrig ) {
