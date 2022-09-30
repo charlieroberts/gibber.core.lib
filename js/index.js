@@ -92,7 +92,7 @@ const Gibber = {
   },
 
   // XXX stop clock from being cleared.
-  clear() { 
+  clear( shouldPrint=true) { 
     for( let plugin of Gibber.plugins ) {
       plugin.plugin.clear()
     }
@@ -100,7 +100,7 @@ const Gibber = {
     this.Seq.clear()
     this.Tidal.clear()
 
-    this.publish( 'clear' )
+    this.publish( 'clear', shouldPrint )
   },
 
   onload() {},

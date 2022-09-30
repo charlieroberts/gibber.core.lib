@@ -106,6 +106,9 @@ module.exports = function( Gibber ) {
       __values.inspect = values.inspect.bind( values )
       if( __values.randomFlag !== undefined ) values.randomFlag = __values.randomFlag
       if( __values.randomArgs !== undefined ) values.randomArgs = __values.randomArgs
+      
+      __values.addPattern( values )
+     
     } else if( typeof __values === 'object' && __values.type==='gen' ) {
       props.values.addFilter = values.addFilter.bind( values )
       props.values.removeFilter = values.removeFilter.bind( values )
@@ -149,6 +152,8 @@ module.exports = function( Gibber ) {
       __timings.addFilter = timings.addFilter.bind( timings )
       if( __timings.randomFlag !== undefined ) timings.randomFlag = __timings.randomFlag
       if( __timings.randomArgs !== undefined ) timings.randomArgs = __timings.randomArgs
+
+      __timings.addPattern( timings )
     }
     if( autotrig === false ) {
       timings.output = { time:'time', shouldExecute:0 }

@@ -9,7 +9,7 @@ const patternWrapper = function( Gibber ) {
     Gibberish = Gibber.Gibberish
   }
 
-  let PatternProto = Object.create( function(){} )
+  const PatternProto = Object.create( function(){} )
 
   // this prototype is somewhat limited, as we want to be able to add
   // .seq() methods to everything. This means that every pattern needs its own
@@ -50,7 +50,6 @@ const patternWrapper = function( Gibber ) {
           args = filter( args, this ) 
         } catch( e ) {
           console.error( e )
-          console.log( 'filter problem?' )
           console.log( `removing bad filter from pattern: ${filter.toString()}` ) 
           const idx = this.filters.indexOf( filter )
           this.filters.splice( idx, 1 )
@@ -212,6 +211,12 @@ const patternWrapper = function( Gibber ) {
     }
 
 
+    //if( Array.isArray( args ) ) {
+    //  if( args.patterns === undefined ) {
+    //    args.patterns = []
+    //  }
+    //  args.patterns.push( fnc )
+    //} 
 
     let out 
     const DNR = -987654321 
